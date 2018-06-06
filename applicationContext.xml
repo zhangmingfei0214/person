@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <beans xmlns="http://www.springframework.org/schema/beans"    
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"   
+         xmlns:p="http://www.springframework.org/schema/p"  
+         xmlns:aop="http://www.springframework.org/schema/aop"   
+         xmlns:context="http://www.springframework.org/schema/context"  
+         xmlns:jee="http://www.springframework.org/schema/jee"  
+         xmlns:tx="http://www.springframework.org/schema/tx"  
+         xsi:schemaLocation="    
+             http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd  
+             http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd  
+             http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+             http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd  
+            http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd"
+            default-lazy-init="true">
+     
+     <!-- 配置文件 -->
+	<context:property-placeholder location="classpath:jdbc.properties"/>
+	
+	<aop:aspectj-autoproxy/>
+	
+	<!-- 包扫描 -->
+	<context:component-scan base-package="com">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+	
+	
+	<!-- 数据源  -->
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClass" value="${jdbc.driverClassName}"></property>
+		<property name="jdbcUrl" value="${jdbc.url}"></property>
+		<property name="username" value="${jdbc.username}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+	</bean>
+		<!-- Hibernate Session -->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+		<!-- 注入连接池 -->
+		<property name="dataSource" ref="dataSource"></property>
+		<!-- 配置Hibernate的属性 -->
+	<property name="hibernateProperties">
+		<props>
+		<!-- 这里注意我们使用的是Hibernate5，所以要用MySQL5Dialect方言，否则会报错 -->
+		<prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+		<prop key="hibernate.show_sql">true</prop>
+		<prop key="hibernate.fromat_sql">true</prop>
+		<prop key="hibernate.cache.use_second_level_cache">false</prop>
+		<prop key="hibernate.cache.use_query_cache">false</prop>
+		<prop key="current_session_context_class">thread</prop>
+		<prop key="hibernate.current_session_context_class">org.springframework.orm.hibernate5.LocalSessionContext</prop>
+		<prop key="hibernate.hbm2ddl.auto">update</prop>
+		</props>
+	</property>
+	
+	<property name="packagesToScan">
+		<list>
+			<value>com.imooc.ssh.entity</value>
+		</list>
+	</property>
+	</bean>
+	
+	<!-- 事务管理 -->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	
+	<!-- 事务Advice -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="get" read-only="true" propagation="REQUIRED"/>
+			<tx:method name="list" read-only="true" propagation="REQUIRED"/>
+			<tx:method name="find" read-only="true" propagation="REQUIRED"/>
+			<tx:method name="*" propagation="REQUIRED" rollback-for="Exception"/>
+		</tx:attributes>
+	</tx:advice>
+	
+	<aop:config proxy-target-class="true">
+		<aop:advisor pointcut="execution(public *com.imooc.*.service.*Service.*(..))" advice-ref="txAdvice"/>
+	</aop:config>
+	
+ </beans>
